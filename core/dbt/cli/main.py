@@ -284,7 +284,8 @@ def compile(ctx, **kwargs):
 @p.version_check
 @requires.preflight
 def debug(ctx, **kwargs):
-    """Show some helpful information about dbt for debugging. Not to be confused with the --debug option which increases verbosity."""
+    """Test the database connection and show information for debugging purposes. Not to be confused with the --debug option which increases verbosity."""
+
     task = DebugTask(
         ctx.obj["flags"],
         None,
