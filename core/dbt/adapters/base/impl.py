@@ -1310,7 +1310,7 @@ class BaseAdapter(metaclass=AdapterMeta):
     @available
     def list_unsupported_constraints(self) -> List:
         not_supported = []
-        for k, v in self.constraint_support:
+        for k, v in self.constraint_support.items():
             if v == ConstraintSupport.NOT_SUPPORTED:
                 not_supported.append(k)
         return not_supported
