@@ -54,6 +54,8 @@ from dbt.events.types import (
     CodeExecution,
     CodeExecutionStatus,
     CatalogGenerationError,
+    ConstraintNotSupported,
+    ConstraintNotEnforced,
 )
 from dbt.utils import filter_null_values, executor, cast_to_str, AttrDict
 
@@ -1305,8 +1307,31 @@ class BaseAdapter(metaclass=AdapterMeta):
         else:
             return ""
 
+    @available
+    def list_unsupported_constraints(self) -> List:
+        not_supported = []
+        for k, v in self.constraint_support:
+            if v == ConstraintSupport.NOT_SUPPORTED:
+                not_supported.append(k)
+        return not_supported
+
+    @available
+    def process_constraints(self, constraints: Set):
+        not_supported = []
+        not_enforced = []
+        for c in constraints:
+            if self.constraint_support[c] == ConstraintSupport.NOT_SUPPORTED:
+                not_supported.append(c)
+            elif self.constraint_support[c] == ConstraintSupport.NOT_ENFORCED:
+                not_enforced.append(c)
+        if not_supported:
+            warn_or_error(ConstraintNotSupported(constraints=not_supported, adapter="?"))
+        if not_enforced:
+            warn_or_error(ConstraintNotEnforced(constraints=not_enforced, adapter="?"))
+
     @property
-    def constraint_support(self) -> str:
+    def constraint_support(self) -> Dict:
+        # TODO: should this instead default all to NOT_ENFORCED
         raise NotImplementedError("constraint_support is not specified")
 
 
