@@ -1316,18 +1316,27 @@ class BaseAdapter(metaclass=AdapterMeta):
         return not_supported
 
     @available
-    def process_constraints(self, constraints: Set):
+    def process_constraints(self, constraints: List[Dict], adapter: str = "?"):
+        # TODO: include info on if they want to be warned
         not_supported = []
         not_enforced = []
+        # constraints: {'type': str, 'expression': optional(str), 'warn_unenforced': bool, 'warn_unsupported': bool}
         for c in constraints:
-            if self.constraint_support[c] == ConstraintSupport.NOT_SUPPORTED:
-                not_supported.append(c)
-            elif self.constraint_support[c] == ConstraintSupport.NOT_ENFORCED:
-                not_enforced.append(c)
+            type = c["type"]
+            if (
+                self.constraint_support[type] == ConstraintSupport.NOT_SUPPORTED
+                and c["warn_unsupported"]
+            ):
+                not_supported.append(type)
+            elif (
+                self.constraint_support[type] == ConstraintSupport.NOT_ENFORCED
+                and c["warn_unenforced"]
+            ):
+                not_enforced.append(type)
         if not_supported:
-            warn_or_error(ConstraintNotSupported(constraints=not_supported, adapter="?"))
+            warn_or_error(ConstraintNotSupported(constraints=not_supported, adapter=adapter))
         if not_enforced:
-            warn_or_error(ConstraintNotEnforced(constraints=not_enforced, adapter="?"))
+            warn_or_error(ConstraintNotEnforced(constraints=not_enforced, adapter=adapter))
 
     @property
     def constraint_support(self) -> Dict:

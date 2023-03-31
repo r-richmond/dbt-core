@@ -12,23 +12,21 @@
     {%- set unsupported_contraints = adapter.list_unsupported_constraints() -%}
     {%- set all_constraints = [] -%}
     (
-    {% for i in user_provided_columns %}
+    {% for i in user_provided_columns -%}
       {%- set col = user_provided_columns[i] -%}
       {%- set constraints = col['constraints'] -%}
       {{ col['name'] }} {{ col['data_type'] }}
-      {%- for c in constraints -%}
-        {{ all_constraints.append(c["type"]) }}
+      {% for c in constraints -%}
+        {% do all_constraints.append(c) %}
         {%- if c["type"] not in unsupported_contraints -%}
           {{ adapter.render_raw_column_constraint(c) }}
-        {%- endif -%}
-      {%- endfor -%}
-      {{ "," if not loop.last }}    {% endfor -%}
-
-      {%- if (all_constraints | length) > 0 -%}
-        {% set constraint_set = set_strict(all_constraints) %}
-        {{ adapter.process_constraints(constraint_set) }}
-      {%- endif %}
+        {% endif -%}
+      {%- endfor %}{{ "," if not loop.last }}
+    {%- endfor -%}
     )
+    {%- if (all_constraints | length) > 0 -%}
+      {%- do adapter.process_constraints(all_constraints) -%}
+    {%- endif %}
 {% endmacro %}
 
 {%- macro get_assert_columns_equivalent(sql) -%}
