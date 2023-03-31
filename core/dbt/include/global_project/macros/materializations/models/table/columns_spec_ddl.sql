@@ -17,16 +17,16 @@
       {%- set constraints = col['constraints'] -%}
       {{ col['name'] }} {{ col['data_type'] }}
       {%- for c in constraints -%}
-        {{ all_constraints.append(c) }}
-        {%- if c.type in unsupported_contraints -%}
-          {%- set ns.at_least_one_unsupported = True -%}
-        {%- else %} {{ adapter.render_raw_column_constraint(c) }}
+        {{ all_constraints.append(c["type"]) }}
+        {%- if c["type"] not in unsupported_contraints -%}
+          {{ adapter.render_raw_column_constraint(c) }}
         {%- endif -%}
       {%- endfor -%}
       {{ "," if not loop.last }}    {% endfor -%}
 
       {%- if (all_constraints | length) > 0 -%}
-        {{ adapter.process_constraints(set(all_constraints)) }}
+        {% set constraint_set = set_strict(all_constraints) %}
+        {{ adapter.process_constraints(constraint_set) }}
       {%- endif %}
     )
 {% endmacro %}
