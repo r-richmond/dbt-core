@@ -1317,7 +1317,7 @@ class BaseAdapter(metaclass=AdapterMeta):
 
     @available
     def process_constraints(self, constraints: List[Dict], adapter: str = "?"):
-        # TODO: include info on if they want to be warned
+        # TODO: how to I get adapter name?
         not_supported = []
         not_enforced = []
         # constraints: {'type': str, 'expression': optional(str), 'warn_unenforced': bool, 'warn_unsupported': bool}
