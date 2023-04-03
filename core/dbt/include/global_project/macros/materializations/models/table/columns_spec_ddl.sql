@@ -9,24 +9,13 @@
 {% macro columns_spec_ddl() %}
   {# loop through user_provided_columns to create DDL with data types and constraints #}
     {%- set user_provided_columns = model['columns'] -%}
-    {%- set unsupported_contraints = adapter.list_unsupported_constraints() -%}
-    {%- set all_constraints = [] -%}
+    {%- set processed_constraints = adapter.render_ddl(columns=user_provided_columns) -%}
+
     (
-    {% for i in user_provided_columns -%}
-      {%- set col = user_provided_columns[i] -%}
-      {%- set constraints = col['constraints'] -%}
-      {{ col['name'] }} {{ col['data_type'] }}
-      {% for c in constraints -%}
-        {% do all_constraints.append(c) %}
-        {%- if c["type"] not in unsupported_contraints -%}
-          {{ adapter.render_raw_column_constraint(c) }}
-        {% endif -%}
-      {%- endfor %}{{ "," if not loop.last }}
-    {%- endfor -%}
+    {% for constraint in processed_constraints -%}
+      {{ constraint }}{{ "," if not loop.last }}
+    {% endfor %}
     )
-    {%- if (all_constraints | length) > 0 -%}
-      {%- do adapter.process_constraints(all_constraints) -%}
-    {%- endif %}
 {% endmacro %}
 
 {%- macro get_assert_columns_equivalent(sql) -%}

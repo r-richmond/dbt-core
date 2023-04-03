@@ -755,7 +755,7 @@ class ConstraintNotEnforced(WarnLevel):
     def message(self) -> str:
         msg = (
             f"We noticed you have { self.constraints } configs, these are NOT enforced "
-            f"with { self.adapter } and will be ignored"
+            f"with this adapter and will be ignored"
         )
         return msg
 
@@ -767,7 +767,7 @@ class ConstraintNotSupported(WarnLevel):
     def message(self) -> str:
         msg = (
             f"We noticed you have { self.constraints } configs, these are NOT supported "
-            f"with { self.adapter } and will be ignored"
+            f"with this adapter and will be ignored"
         )
         return msg
 
