@@ -1349,8 +1349,13 @@ class BaseAdapter(metaclass=AdapterMeta):
 
     @staticmethod
     def constraint_support() -> Dict:
-        # TODO: should this instead default all to NOT_ENFORCED
-        raise NotImplementedError("constraint_support is not specified")
+        return {
+            ConstraintType.check: ConstraintSupport.NOT_SUPPORTED,
+            ConstraintType.not_null: ConstraintSupport.ENFORCED,
+            ConstraintType.unique: ConstraintSupport.NOT_ENFORCED,
+            ConstraintType.primary_key: ConstraintSupport.NOT_ENFORCED,
+            ConstraintType.foreign_key: ConstraintSupport.ENFORCED,
+        }
 
 
 COLUMNS_EQUAL_SQL = """
