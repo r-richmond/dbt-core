@@ -1304,48 +1304,30 @@ class BaseAdapter(metaclass=AdapterMeta):
     @available
     def render_column_constraint_ddl(self, columns: Dict[str, Dict]) -> List:
         rendered_column_constraints = []
-        all_constraints = []
+        constraint_type_to_support = self.constraint_support()
 
-        unsupported_contraints = self.list_unsupported_constraints()
-
-        for k, v in columns.items():
-            column_ddl = [f"{v['name']} {v['data_type']}"]
+        for _, v in columns.items():
+            rendered_column_constraint = [f"{v['name']} {v['data_type']}"]
             for con in v["constraints"]:
-                all_constraints.append(con)
-                if con["type"] not in unsupported_contraints:
-                    constraint = self._parse_column_constraint(con)
-                    column_ddl.append(self.render_column_constraint(constraint))
-            rendered_column_constraints.append(" ".join(column_ddl))
+                constraint = self._parse_column_constraint(con)
+                if (
+                    constraint.warn_unsupported
+                    and constraint_type_to_support[constraint.type]
+                    == ConstraintSupport.NOT_SUPPORTED
+                ):
+                    warn_or_error(ConstraintNotSupported(constraint=constraint.type.value))
+                if (
+                    constraint.warn_unenforced
+                    and constraint_type_to_support[constraint.type]
+                    == ConstraintSupport.NOT_ENFORCED
+                ):
+                    warn_or_error(ConstraintNotEnforced(constraint=constraint.type.value))
+                if constraint_type_to_support[constraint.type] != ConstraintSupport.NOT_SUPPORTED:
+                    rendered_column_constraint.append(self.render_column_constraint(constraint))
 
-        self.process_constraint_warnings(constraints=all_constraints)
+            rendered_column_constraints.append(" ".join(rendered_column_constraint))
 
         return rendered_column_constraints
-
-    def list_unsupported_constraints(self) -> List:
-        not_supported = []
-        for k, v in self.constraint_support().items():
-            if v == ConstraintSupport.NOT_SUPPORTED:
-                not_supported.append(k)
-        return not_supported
-
-    def process_constraint_warnings(self, constraints: List[Dict]):
-        constraint_map = self.constraint_support()
-        not_supported = [
-            c["type"]
-            for c in constraints
-            if constraint_map[c["type"]] == ConstraintSupport.NOT_SUPPORTED
-            and c["warn_unsupported"]
-        ]
-        not_enforced = [
-            c["type"]
-            for c in constraints
-            if constraint_map[c["type"]] == ConstraintSupport.NOT_ENFORCED and c["warn_unenforced"]
-        ]
-
-        if not_supported:
-            warn_or_error(ConstraintNotSupported(constraints=not_supported))
-        if not_enforced:
-            warn_or_error(ConstraintNotEnforced(constraints=not_enforced))
 
     @staticmethod
     def constraint_support() -> Dict:
