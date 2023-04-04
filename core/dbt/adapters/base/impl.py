@@ -213,6 +213,14 @@ class BaseAdapter(metaclass=AdapterMeta):
     # for use in materializations
     AdapterSpecificConfigs: Type[AdapterConfig] = AdapterConfig
 
+    CONSTRAINT_SUPPORT = {
+        ConstraintType.check: ConstraintSupport.NOT_SUPPORTED,
+        ConstraintType.not_null: ConstraintSupport.ENFORCED,
+        ConstraintType.unique: ConstraintSupport.NOT_ENFORCED,
+        ConstraintType.primary_key: ConstraintSupport.NOT_ENFORCED,
+        ConstraintType.foreign_key: ConstraintSupport.ENFORCED,
+    }
+
     def __init__(self, config):
         self.config = config
         self.cache = RelationsCache()
@@ -1304,7 +1312,6 @@ class BaseAdapter(metaclass=AdapterMeta):
     @available
     def render_column_constraint_ddl(self, columns: Dict[str, Dict]) -> List:
         rendered_column_constraints = []
-        constraint_type_to_support = self.constraint_support()
 
         for _, v in columns.items():
             rendered_column_constraint = [f"{v['name']} {v['data_type']}"]
@@ -1312,32 +1319,20 @@ class BaseAdapter(metaclass=AdapterMeta):
                 constraint = self._parse_column_constraint(con)
                 if (
                     constraint.warn_unsupported
-                    and constraint_type_to_support[constraint.type]
-                    == ConstraintSupport.NOT_SUPPORTED
+                    and self.CONSTRAINT_SUPPORT[constraint.type] == ConstraintSupport.NOT_SUPPORTED
                 ):
                     warn_or_error(ConstraintNotSupported(constraint=constraint.type.value))
                 if (
                     constraint.warn_unenforced
-                    and constraint_type_to_support[constraint.type]
-                    == ConstraintSupport.NOT_ENFORCED
+                    and self.CONSTRAINT_SUPPORT[constraint.type] == ConstraintSupport.NOT_ENFORCED
                 ):
                     warn_or_error(ConstraintNotEnforced(constraint=constraint.type.value))
-                if constraint_type_to_support[constraint.type] != ConstraintSupport.NOT_SUPPORTED:
+                if self.CONSTRAINT_SUPPORT[constraint.type] != ConstraintSupport.NOT_SUPPORTED:
                     rendered_column_constraint.append(self.render_column_constraint(constraint))
 
             rendered_column_constraints.append(" ".join(rendered_column_constraint))
 
         return rendered_column_constraints
-
-    @staticmethod
-    def constraint_support() -> Dict:
-        return {
-            ConstraintType.check: ConstraintSupport.NOT_SUPPORTED,
-            ConstraintType.not_null: ConstraintSupport.ENFORCED,
-            ConstraintType.unique: ConstraintSupport.NOT_ENFORCED,
-            ConstraintType.primary_key: ConstraintSupport.NOT_ENFORCED,
-            ConstraintType.foreign_key: ConstraintSupport.ENFORCED,
-        }
 
 
 COLUMNS_EQUAL_SQL = """
