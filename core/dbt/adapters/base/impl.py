@@ -1302,8 +1302,8 @@ class BaseAdapter(metaclass=AdapterMeta):
             return ""
 
     @available
-    def render_ddl(self, columns: Dict[str, Dict]) -> List:
-        ddl = []
+    def render_column_constraint_ddl(self, columns: Dict[str, Dict]) -> List:
+        rendered_column_constraints = []
         all_constraints = []
 
         unsupported_contraints = self.list_unsupported_constraints()
@@ -1315,11 +1315,11 @@ class BaseAdapter(metaclass=AdapterMeta):
                 if con["type"] not in unsupported_contraints:
                     constraint = self._parse_column_constraint(con)
                     column_ddl.append(self.render_column_constraint(constraint))
-            ddl.append(" ".join(column_ddl))
+            rendered_column_constraints.append(" ".join(column_ddl))
 
         self.process_constraint_warnings(constraints=all_constraints)
 
-        return ddl
+        return rendered_column_constraints
 
     def list_unsupported_constraints(self) -> List:
         not_supported = []
