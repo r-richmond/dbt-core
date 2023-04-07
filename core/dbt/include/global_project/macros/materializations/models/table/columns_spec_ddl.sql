@@ -10,10 +10,10 @@
   {# loop through user_provided_columns to create DDL with data types and constraints #}
     {%- set user_provided_columns = model['columns'] -%}
     {%- set raw_model_constraints = adapter.render_raw_model_constraints(model['constraints']) -%}
-    {%- set processed_constraints = adapter.render_column_constraint_ddl(columns=user_provided_columns) -%}
+    {%- set raw_column_constraints = adapter.render_raw_column_constraints(columns=user_provided_columns) -%}
     (
-    {% for constraint in processed_constraints -%}
-      {{ constraint }}{{ "," if not loop.last }}
+    {% for c in raw_column_constraints -%}
+      {{ c }}{{ "," if not loop.last }}
     {% endfor %}
     {% for c in raw_model_constraints %}
         {{ c }}{{ "," if not loop.last }}
