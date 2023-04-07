@@ -117,7 +117,7 @@ log_cache_events = click.option(
 log_format = click.option(
     "--log-format",
     envvar="DBT_LOG_FORMAT",
-    help="Specify the log format, overriding the command's default.",
+    help="Specify the format of logging to the console and the log file. Use --log-format-file to configure the format for the log file differently than the console.",
     type=click.Choice(["text", "debug", "json", "default"], case_sensitive=False),
     default="default",
 )
@@ -125,7 +125,7 @@ log_format = click.option(
 log_format_file = click.option(
     "--log-format-file",
     envvar="DBT_LOG_FORMAT_FILE",
-    help="Specify the file log format, overriding the command's default and the value of --log-format.",
+    help="Specify the format of logging to the log file by overriding the default value and the general --log-format setting.",
     type=click.Choice(["text", "debug", "json", "default"], case_sensitive=False),
     default="debug",
 )
@@ -133,7 +133,7 @@ log_format_file = click.option(
 log_level = click.option(
     "--log-level",
     envvar="DBT_LOG_LEVEL",
-    help="Specify the minimum severity of events that are logged.",
+    help="Specify the minimum severity of events that are logged to the console and the log file. Use --log-level-file to configure the severity for the log file differently than the console.",
     type=click.Choice(["debug", "info", "warn", "error", "none"], case_sensitive=False),
     default="info",
 )
@@ -141,7 +141,7 @@ log_level = click.option(
 log_level_file = click.option(
     "--log-level-file",
     envvar="DBT_LOG_LEVEL_FILE",
-    help="Specify the minimum severity of events that are logged to file, overriding the value of --log-level-file.",
+    help="Specify the minimum severity of events that are logged to the log file by overriding the default value and the general --log-level setting.",
     type=click.Choice(["debug", "info", "warn", "error", "none"], case_sensitive=False),
     default="debug",
 )
@@ -149,14 +149,14 @@ log_level_file = click.option(
 use_colors = click.option(
     "--use-colors/--no-use-colors",
     envvar="DBT_USE_COLORS",
-    help="Specify whether log output is colorized.",
+    help="Specify whether log output is colorized in the console and the log file. Use --use-colors-file/--no-use-colors-file to colorize the log file differently than the console.",
     default=True,
 )
 
 use_colors_file = click.option(
     "--use-colors-file/--no-use-colors-file",
     envvar="DBT_USE_COLORS_FILE",
-    help="Specify whether log file output is colorized overriding --use-colors/--no-use-colors.",
+    help="Specify whether log file output is colorized by overriding the default value and the general --use-colors/--no-use-colors setting.",
     default=True,
 )
 
