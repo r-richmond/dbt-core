@@ -1,20 +1,23 @@
-{%- macro get_columns_spec_ddl() -%}
-  {{ adapter.dispatch('get_columns_spec_ddl', 'dbt')() }}
+{%- macro get_table_columns_and_constraints() -%}
+  {{ adapter.dispatch('get_table_columns_and_constraints', 'dbt')() }}
 {%- endmacro -%}
 
-{% macro default__get_columns_spec_ddl() -%}
-  {{ return(columns_spec_ddl()) }}
+{% macro default__get_table_columns_and_constraints() -%}
+  {{ return(table_columns_and_constraints()) }}
 {%- endmacro %}
 
-{% macro columns_spec_ddl() %}
+{% macro table_columns_and_constraints() %}
   {# loop through user_provided_columns to create DDL with data types and constraints #}
     {%- set user_provided_columns = model['columns'] -%}
+    {%- set raw_model_constraints = adapter.render_raw_model_constraints(model['constraints']) -%}
     {%- set processed_constraints = adapter.render_column_constraint_ddl(columns=user_provided_columns) -%}
-
     (
     {% for constraint in processed_constraints -%}
       {{ constraint }}{{ "," if not loop.last }}
     {% endfor %}
+    {% for c in raw_model_constraints %}
+        {{ c }}{{ "," if not loop.last }}
+    {% endfor -%}
     )
 {% endmacro %}
 
