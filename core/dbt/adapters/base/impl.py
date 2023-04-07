@@ -1348,10 +1348,7 @@ class BaseAdapter(metaclass=AdapterMeta):
     @available
     @classmethod
     def render_raw_model_constraints(cls, raw_constraints: Dict[str, Any]) -> List:
-        # comment out to get mypy passing for now
-        # Argument 1 to "map" has incompatible type "Callable[[Dict[str, Any]], Optional[str]]"; expected "Callable[[str], Optional[str]]"
-        # return [c for c in map(cls.render_raw_model_constraint, raw_constraints) if c is not None]
-        pass
+        return [c for c in map(cls.render_raw_model_constraint, raw_constraints) if c is not None]
 
     @classmethod
     def render_raw_model_constraint(cls, raw_constraint: Dict[str, Any]) -> Optional[str]:
