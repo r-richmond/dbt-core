@@ -470,7 +470,7 @@ version = click.option(
 version_check = click.option(
     "--version-check/--no-version-check",
     envvar="DBT_VERSION_CHECK",
-    help="If set, ensure dbt's version matches the require-dbt-version specified in the dbt_project.yml file (if any). Otherwise, allow them to differ.",
+    help="If set, ensure the installed dbt version matches the require-dbt-version specified in the dbt_project.yml file (if any). Otherwise, allow them to differ.",
     default=True,
 )
 
