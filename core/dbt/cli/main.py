@@ -319,7 +319,6 @@ def compile(ctx, **kwargs):
 @p.show_limit
 @p.indirect_selection
 @p.introspect
-@p.parse_only
 @p.profile
 @p.profiles_dir
 @p.project_dir
