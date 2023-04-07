@@ -62,7 +62,7 @@ debug = click.option(
 defer = click.option(
     "--defer/--no-defer",
     envvar="DBT_DEFER",
-    help="If set, defer to the state variable for resolving unselected nodes.",
+    help="If set, resolve unselected nodes by deferring to the manifest within the --state directory.",
 )
 
 enable_legacy_logger = click.option(
