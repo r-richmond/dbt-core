@@ -146,6 +146,20 @@ log_level_file = click.option(
     default="debug",
 )
 
+use_colors = click.option(
+    "--use-colors/--no-use-colors",
+    envvar="DBT_USE_COLORS",
+    help="Specify whether log output is colorized.",
+    default=True,
+)
+
+use_colors_file = click.option(
+    "--use-colors-file/--no-use-colors-file",
+    envvar="DBT_USE_COLORS_FILE",
+    help="Specify whether log file output is colorized overriding --use-colors/--no-use-colors.",
+    default=True,
+)
+
 log_path = click.option(
     "--log-path",
     envvar="DBT_LOG_PATH",
@@ -415,20 +429,6 @@ threads = click.option(
     help="Specify number of threads to use while executing models. Overrides settings in profiles.yml.",
     default=None,
     type=click.INT,
-)
-
-use_colors = click.option(
-    "--use-colors/--no-use-colors",
-    envvar="DBT_USE_COLORS",
-    help="Specify whether log output is colorized.",
-    default=True,
-)
-
-use_colors_file = click.option(
-    "--use-colors-file/--no-use-colors-file",
-    envvar="DBT_USE_COLORS_FILE",
-    help="Specify whether log file output is colorized overriding --use-colors/--no-use-colors.",
-    default=True,
 )
 
 use_experimental_parser = click.option(
