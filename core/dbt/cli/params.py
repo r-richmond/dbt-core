@@ -6,7 +6,6 @@ from dbt.cli.option_types import YAML, ChoiceTuple, WarnErrorOptionsType
 from dbt.cli.resolvers import default_project_dir, default_profiles_dir
 from dbt.version import get_version_information
 
-
 args = click.option(
     "--args",
     envvar=None,
@@ -55,14 +54,19 @@ debug = click.option(
     help="Display debug logging during dbt execution. Useful for debugging and making bug reports.",
 )
 
-# TODO:  The env var and name (reflected in flags) are corrections!
-# The original name was `DEFER_MODE` and used an env var called "DBT_DEFER_TO_STATE"
-# Both of which break existing naming conventions.
-# This will need to be fixed before use in the main codebase and communicated as a change to the community!
+# flag was previously named DEFER_MODE
 defer = click.option(
     "--defer/--no-defer",
     envvar="DBT_DEFER",
     help="If set, resolve unselected nodes by deferring to the manifest within the --state directory.",
+)
+
+deprecated_defer = click.option(
+    "--deprecated-defer",
+    envvar="DBT_DEFER_TO_STATE",
+    help="Internal flag for deprecating old env var.",
+    default=False,
+    hidden=True,
 )
 
 enable_legacy_logger = click.option(
@@ -76,6 +80,7 @@ exclude = click.option(
     envvar=None,
     type=tuple,
     cls=MultiOption,
+    multiple=True,
     help="Specify the nodes to exclude.",
 )
 
@@ -90,6 +95,12 @@ favor_state = click.option(
     "--favor-state/--no-favor-state",
     envvar="DBT_FAVOR_STATE",
     help="If set, defer to the argument provided to the state flag for resolving unselected nodes, even if the node(s) exist as a database object in the current environment.",
+)
+
+deprecated_favor_state = click.option(
+    "--deprecated-favor-state",
+    envvar="DBT_FAVOR_STATE_MODE",
+    help="Internal flag for deprecating old env var.",
 )
 
 full_refresh = click.option(
@@ -183,6 +194,22 @@ output = click.option(
     default="selector",
 )
 
+show_output_format = click.option(
+    "--output",
+    envvar=None,
+    help="Output format for dbt compile and dbt show",
+    type=click.Choice(["json", "text"], case_sensitive=False),
+    default="text",
+)
+
+show_limit = click.option(
+    "--limit",
+    envvar=None,
+    help="Limit the number of results returned by dbt show",
+    type=click.INT,
+    default=5,
+)
+
 output_keys = click.option(
     "--output-keys",
     envvar=None,
@@ -190,8 +217,9 @@ output_keys = click.option(
         "Space-delimited listing of node properties to include as custom keys for JSON output "
         "(e.g. `--output json --output-keys name resource_type description`)"
     ),
-    type=list,
+    type=tuple,
     cls=MultiOption,
+    multiple=True,
     default=[],
 )
 
@@ -219,7 +247,6 @@ port = click.option(
     type=click.INT,
 )
 
-# envvar was previously named DBT_NO_PRINT
 print = click.option(
     "--print/--no-print",
     envvar="DBT_PRINT",
@@ -311,6 +338,7 @@ resource_type = click.option(
         case_sensitive=False,
     ),
     cls=MultiOption,
+    multiple=True,
     default=(),
 )
 
@@ -320,13 +348,14 @@ select_attrs = {
     "envvar": None,
     "help": "Specify the nodes to include.",
     "cls": MultiOption,
+    "multiple": True,
     "type": tuple,
 }
 
 inline = click.option(
     "--inline",
     envvar=None,
-    help="Pass SQL inline to dbt compile and preview",
+    help="Pass SQL inline to dbt compile and show",
 )
 
 # `--select` and `--models` are analogous for most commands except `dbt list` for legacy reasons.
@@ -378,14 +407,24 @@ skip_profile_setup = click.option(
     is_flag=True,
 )
 
-# TODO:  The env var and name (reflected in flags) are corrections!
-# The original name was `ARTIFACT_STATE_PATH` and used the env var `DBT_ARTIFACT_STATE_PATH`.
-# Both of which break existing naming conventions.
-# This will need to be fixed before use in the main codebase and communicated as a change to the community!
 state = click.option(
     "--state",
     envvar="DBT_STATE",
     help="If set, use the given directory as the source for JSON files to compare with this project.",
+    type=click.Path(
+        dir_okay=True,
+        file_okay=False,
+        readable=True,
+        resolve_path=True,
+        path_type=Path,
+    ),
+)
+
+deprecated_state = click.option(
+    "--deprecated-state",
+    envvar="DBT_ARTIFACT_STATE_PATH",
+    help="Internal flag for deprecating old env var.",
+    hidden=True,
     type=click.Path(
         dir_okay=True,
         file_okay=False,

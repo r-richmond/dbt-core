@@ -1,26 +1,29 @@
 from copy import copy
-from typing import List, Tuple, Optional
+from typing import Callable, List, Tuple, Optional
 
 import click
+
 from dbt.cli import requires, params as p
-from dbt.config.project import Project
 from dbt.config.profile import Profile
+from dbt.config.project import Project
 from dbt.contracts.graph.manifest import Manifest
+from dbt.events.base_types import EventMsg
+from dbt.task.build import BuildTask
 from dbt.task.clean import CleanTask
 from dbt.task.compile import CompileTask
-from dbt.task.deps import DepsTask
 from dbt.task.debug import DebugTask
-from dbt.task.run import RunTask
-from dbt.task.serve import ServeTask
-from dbt.task.test import TestTask
-from dbt.task.snapshot import SnapshotTask
-from dbt.task.seed import SeedTask
-from dbt.task.list import ListTask
+from dbt.task.deps import DepsTask
 from dbt.task.freshness import FreshnessTask
-from dbt.task.run_operation import RunOperationTask
-from dbt.task.build import BuildTask
 from dbt.task.generate import GenerateTask
 from dbt.task.init import InitTask
+from dbt.task.list import ListTask
+from dbt.task.run import RunTask
+from dbt.task.run_operation import RunOperationTask
+from dbt.task.seed import SeedTask
+from dbt.task.serve import ServeTask
+from dbt.task.show import ShowTask
+from dbt.task.snapshot import SnapshotTask
+from dbt.task.test import TestTask
 
 
 class dbtUsageException(Exception):
@@ -34,21 +37,37 @@ class dbtInternalException(Exception):
 # Programmatic invocation
 class dbtRunner:
     def __init__(
-        self, project: Project = None, profile: Profile = None, manifest: Manifest = None
+        self,
+        project: Project = None,
+        profile: Profile = None,
+        manifest: Manifest = None,
+        callbacks: List[Callable[[EventMsg], None]] = [],
     ):
         self.project = project
         self.profile = profile
         self.manifest = manifest
+        self.callbacks = callbacks
 
-    def invoke(self, args: List[str]) -> Tuple[Optional[List], bool]:
+    def invoke(self, args: List[str], **kwargs) -> Tuple[Optional[List], bool]:
         try:
             dbt_ctx = cli.make_context(cli.name, args)
             dbt_ctx.obj = {
                 "project": self.project,
                 "profile": self.profile,
                 "manifest": self.manifest,
+                "callbacks": self.callbacks,
             }
+
+            for key, value in kwargs.items():
+                dbt_ctx.params[key] = value
+                # Hack to set parameter source to custom string
+                dbt_ctx.set_parameter_source(key, "kwargs")  # type: ignore
+
             return cli.invoke(dbt_ctx)
+        except requires.HandledExit as e:
+            return (e.result, e.success)
+        except requires.UnhandledExit as e:
+            raise e.exception
         except click.exceptions.Exit as e:
             # 0 exit code, expected for --version early exit
             if str(e) == "0":
@@ -104,9 +123,11 @@ def cli(ctx, **kwargs):
 @cli.command("build")
 @click.pass_context
 @p.defer
+@p.deprecated_defer
 @p.exclude
 @p.fail_fast
 @p.favor_state
+@p.deprecated_favor_state
 @p.full_refresh
 @p.indirect_selection
 @p.profile
@@ -117,6 +138,7 @@ def cli(ctx, **kwargs):
 @p.selector
 @p.show
 @p.state
+@p.deprecated_state
 @p.store_failures
 @p.target
 @p.target_path
@@ -128,6 +150,7 @@ def cli(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.postflight
 def build(ctx, **kwargs):
     """Run all seeds, models, snapshots, and tests in DAG order"""
     task = BuildTask(
@@ -152,6 +175,7 @@ def build(ctx, **kwargs):
 @requires.preflight
 @requires.unset_profile
 @requires.project
+@requires.postflight
 def clean(ctx, **kwargs):
     """Delete all folders in the clean-targets list (usually the dbt_packages and target directories.)"""
     task = CleanTask(ctx.obj["flags"], ctx.obj["project"])
@@ -173,14 +197,17 @@ def docs(ctx, **kwargs):
 @click.pass_context
 @p.compile_docs
 @p.defer
+@p.deprecated_defer
 @p.exclude
 @p.favor_state
+@p.deprecated_favor_state
 @p.profile
 @p.profiles_dir
 @p.project_dir
 @p.select
 @p.selector
 @p.state
+@p.deprecated_state
 @p.target
 @p.target_path
 @p.threads
@@ -191,6 +218,7 @@ def docs(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest(write=False)
+@requires.postflight
 def docs_generate(ctx, **kwargs):
     """Generate the documentation website for your project"""
     task = GenerateTask(
@@ -219,6 +247,7 @@ def docs_generate(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.postflight
 def docs_serve(ctx, **kwargs):
     """Serve the documentation website for your project"""
     task = ServeTask(
@@ -236,9 +265,12 @@ def docs_serve(ctx, **kwargs):
 @cli.command("compile")
 @click.pass_context
 @p.defer
+@p.deprecated_defer
 @p.exclude
 @p.favor_state
+@p.deprecated_favor_state
 @p.full_refresh
+@p.show_output_format
 @p.indirect_selection
 @p.introspect
 @p.profile
@@ -248,6 +280,7 @@ def docs_serve(ctx, **kwargs):
 @p.selector
 @p.inline
 @p.state
+@p.deprecated_state
 @p.target
 @p.target_path
 @p.threads
@@ -258,10 +291,58 @@ def docs_serve(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.postflight
 def compile(ctx, **kwargs):
     """Generates executable SQL from source, model, test, and analysis files. Compiled SQL files are written to the
     target/ directory."""
     task = CompileTask(
+        ctx.obj["flags"],
+        ctx.obj["runtime_config"],
+        ctx.obj["manifest"],
+    )
+
+    results = task.run()
+    success = task.interpret_results(results)
+    return results, success
+
+
+# dbt show
+@cli.command("show")
+@click.pass_context
+@p.defer
+@p.deprecated_defer
+@p.exclude
+@p.favor_state
+@p.deprecated_favor_state
+@p.full_refresh
+@p.show_output_format
+@p.show_limit
+@p.indirect_selection
+@p.introspect
+@p.parse_only
+@p.profile
+@p.profiles_dir
+@p.project_dir
+@p.select
+@p.selector
+@p.inline
+@p.state
+@p.deprecated_state
+@p.target
+@p.target_path
+@p.threads
+@p.vars
+@p.version_check
+@requires.preflight
+@requires.profile
+@requires.project
+@requires.runtime_config
+@requires.manifest
+@requires.postflight
+def show(ctx, **kwargs):
+    """Generates executable SQL for a named resource or inline query, runs that SQL, and returns a preview of the
+    results. Does not materialize anything to the warehouse."""
+    task = ShowTask(
         ctx.obj["flags"],
         ctx.obj["runtime_config"],
         ctx.obj["manifest"],
@@ -283,6 +364,7 @@ def compile(ctx, **kwargs):
 @p.vars
 @p.version_check
 @requires.preflight
+@requires.postflight
 def debug(ctx, **kwargs):
     """Test the database connection and show information for debugging purposes. Not to be confused with the --debug option which increases verbosity."""
 
@@ -307,6 +389,7 @@ def debug(ctx, **kwargs):
 @requires.preflight
 @requires.unset_profile
 @requires.project
+@requires.postflight
 def deps(ctx, **kwargs):
     """Pull the most recent version of the dependencies listed in packages.yml"""
     task = DepsTask(ctx.obj["flags"], ctx.obj["project"])
@@ -327,6 +410,7 @@ def deps(ctx, **kwargs):
 @p.target
 @p.vars
 @requires.preflight
+@requires.postflight
 def init(ctx, **kwargs):
     """Initialize a new dbt project."""
     task = InitTask(ctx.obj["flags"], None)
@@ -351,6 +435,7 @@ def init(ctx, **kwargs):
 @p.raw_select
 @p.selector
 @p.state
+@p.deprecated_state
 @p.target
 @p.vars
 @requires.preflight
@@ -358,6 +443,7 @@ def init(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.postflight
 def list(ctx, **kwargs):
     """List the resources in your project"""
     task = ListTask(
@@ -393,6 +479,7 @@ cli.add_command(ls, "ls")
 @requires.project
 @requires.runtime_config
 @requires.manifest(write_perf_info=True)
+@requires.postflight
 def parse(ctx, **kwargs):
     """Parses the project and provides information on performance"""
     # manifest generation and writing happens in @requires.manifest
@@ -403,7 +490,9 @@ def parse(ctx, **kwargs):
 @cli.command("run")
 @click.pass_context
 @p.defer
+@p.deprecated_defer
 @p.favor_state
+@p.deprecated_favor_state
 @p.exclude
 @p.fail_fast
 @p.full_refresh
@@ -413,6 +502,7 @@ def parse(ctx, **kwargs):
 @p.select
 @p.selector
 @p.state
+@p.deprecated_state
 @p.target
 @p.target_path
 @p.threads
@@ -423,6 +513,7 @@ def parse(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.postflight
 def run(ctx, **kwargs):
     """Compile SQL and execute against the current target database."""
     task = RunTask(
@@ -451,6 +542,7 @@ def run(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.postflight
 def run_operation(ctx, **kwargs):
     """Run the named macro with any supplied arguments."""
     task = RunOperationTask(
@@ -476,6 +568,7 @@ def run_operation(ctx, **kwargs):
 @p.selector
 @p.show
 @p.state
+@p.deprecated_state
 @p.target
 @p.target_path
 @p.threads
@@ -486,6 +579,7 @@ def run_operation(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.postflight
 def seed(ctx, **kwargs):
     """Load data from csv files into your data warehouse."""
     task = SeedTask(
@@ -502,14 +596,17 @@ def seed(ctx, **kwargs):
 @cli.command("snapshot")
 @click.pass_context
 @p.defer
+@p.deprecated_defer
 @p.exclude
 @p.favor_state
+@p.deprecated_favor_state
 @p.profile
 @p.profiles_dir
 @p.project_dir
 @p.select
 @p.selector
 @p.state
+@p.deprecated_state
 @p.target
 @p.threads
 @p.vars
@@ -518,6 +615,7 @@ def seed(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.postflight
 def snapshot(ctx, **kwargs):
     """Execute snapshots defined in your project"""
     task = SnapshotTask(
@@ -549,6 +647,7 @@ def source(ctx, **kwargs):
 @p.select
 @p.selector
 @p.state
+@p.deprecated_state
 @p.target
 @p.threads
 @p.vars
@@ -557,6 +656,7 @@ def source(ctx, **kwargs):
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.postflight
 def freshness(ctx, **kwargs):
     """check the current freshness of the project's sources"""
     task = FreshnessTask(
@@ -580,9 +680,11 @@ cli.commands["source"].add_command(snapshot_freshness, "snapshot-freshness")  # 
 @cli.command("test")
 @click.pass_context
 @p.defer
+@p.deprecated_defer
 @p.exclude
 @p.fail_fast
 @p.favor_state
+@p.deprecated_favor_state
 @p.indirect_selection
 @p.profile
 @p.profiles_dir
@@ -590,6 +692,7 @@ cli.commands["source"].add_command(snapshot_freshness, "snapshot-freshness")  # 
 @p.select
 @p.selector
 @p.state
+@p.deprecated_state
 @p.store_failures
 @p.target
 @p.target_path
@@ -601,6 +704,7 @@ cli.commands["source"].add_command(snapshot_freshness, "snapshot-freshness")  # 
 @requires.project
 @requires.runtime_config
 @requires.manifest
+@requires.postflight
 def test(ctx, **kwargs):
     """Runs tests on data in deployed models. Run this after `dbt run`"""
     task = TestTask(
