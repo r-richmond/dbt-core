@@ -103,7 +103,7 @@ full_refresh = click.option(
 indirect_selection = click.option(
     "--indirect-selection",
     envvar="DBT_INDIRECT_SELECTION",
-    help="Select all tests that are adjacent to selected resources, even if they those resources have been explicitly selected.",
+    help="Choose which tests to select that are adjacent to selected resources. Eager is most inclusive, cautious is most exclusive, and buildable is in between. Empty includes no tests at all.",
     type=click.Choice(["eager", "cautious", "buildable", "empty"], case_sensitive=False),
     default="eager",
 )
