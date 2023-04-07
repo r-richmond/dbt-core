@@ -42,6 +42,12 @@ def _set_meta_value(obj: M, key: str, existing: Optional[Dict[str, Any]] = None)
     return result
 
 
+class OnConfigurationChange(Enum):
+    APPLY = "apply"
+    IGNORE = "ignore"
+    FAIL = "fail"
+
+
 class Metadata(Enum):
     @classmethod
     def from_field(cls: Type[M], fld: Field) -> M:
@@ -445,6 +451,7 @@ class NodeConfig(NodeAndTestConfig):
     # sometimes getting the Union order wrong, causing serialization failures.
     unique_key: Union[str, List[str], None] = None
     on_schema_change: Optional[str] = "ignore"
+    on_configuration_change: Optional[str] = "apply"
     grants: Dict[str, Any] = field(
         default_factory=dict, metadata=MergeBehavior.DictKeyAppend.meta()
     )
